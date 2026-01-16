@@ -1,0 +1,11 @@
+log('SRU Request', level : WARN)
+
+if marc_has(830$w)
+   marc_map(830$w,acnumber.$append)
+   replace_all(acnumber.*,'\(AT-OBV\)',"")
+   prepend(acnumber.*,"alma.local_control_field_009=")
+   if exists(acnumber.1)
+         join_field(acnumber,' OR ')
+   end
+   
+   

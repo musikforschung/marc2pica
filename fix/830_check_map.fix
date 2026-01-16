@@ -1,0 +1,13 @@
+# 003@ PPN
+pica_map(003@$0,match.0)
+
+# 002@ Physical Description
+pica_map(002@$0,match.1)
+
+# 021A$a titel
+pica_map(021A$a,match.2)
+
+join_field(match,', ')
+retain(match)
+
+sleep(1,SECONDS)

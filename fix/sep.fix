@@ -1,0 +1,7 @@
+# catmandu convert PICA --type plain to Null --fix sep.fix
+
+if pica_match(036F$7,'.*')
+   add_to_exporter(.,PICA,type:plain,file:einspielung_2.pp)
+   reject()
+end
+

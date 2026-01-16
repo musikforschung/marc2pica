@@ -1,0 +1,975 @@
+## marc2pica_oenb
+# catmandu convert MARC --type MARCMaker to PICA --type generic --subfield_indicator 'ƒ' --record_separator '####' --fix marc2pica_oenb.fix < oenb.mrk > oenb.pp
+
+
+# https://d-nb.info/103173869X/34
+# https://www.loc.gov/marc/bibliographic/
+# MARC21-Exportformat - K10plus - Startseite
+# http://swbtools.bsz-bw.de/cgi-bin/help.pl?cmd=pp_list
+# https://wiki.dnb.de/display/DINIAGKIM/MARC+21-RDF-Mapping
+# https://github.com/LibreCat/Catmandu-MARC/wiki/Mapping-rules
+# https://metacpan.org/pod/Catmandu::Fix::marc_map
+# https://metacpan.org/pod/Catmandu::Fix::pica_add
+
+# create new array for PICA data
+set_array(pica)
+
+# 007 c   002@$0
+# 007 cr  016A$a
+# 008/21  002@$0/2
+marc_map(007/0-1,tmp.$append)
+copy_field(tmp.0,dc_type.0)
+rm(tmp)
+lookup('dc_type.0',"./dictionary/007_mapping.csv")
+if marc_match(LDR/7,'m')
+   if marc_match(LDR/19,'b')
+      set_field(dc_type.1,"F")
+   elsif
+      marc_match(LDR/19,'c')
+      set_field(dc_type.1,"f")
+   elsif
+      marc_match(LDR/19,'a')
+      set_field(dc_type.1,"c")
+   else
+      set_field(dc_type.1,"a")
+   end
+end
+if marc_match(LDR/7,'a')
+   set_field(dc_type.1,"s")
+end
+if marc_match(008/21,'p')
+   set_field(dc_type.1,"b")
+end
+if marc_match(008/21,'m')
+   set_field(dc_type.1,"d")
+end
+set_field(dc_type.2,"u")
+join_field(dc_type,'')
+pica_add(dc_type,002@0,record:'pica')
+
+# LDR/06	002C$a$b
+if marc_match(LDR/6,'a')
+   set_field(rdau_P60049_a,"Text")
+   set_field(rdau_P60049_b,"txt")
+   pica_add(rdau_P60049_a,002Ca,record:'pica')
+   pica_add(rdau_P60049_b,002Cb,record:'pica')
+end
+
+# 007/00    002D$a$bc
+if marc_match(007/00,'t')
+   set_field(rdau_P60050_a,"ohne Hilfsmittel zu benutzen")
+   set_field(rdau_P60050_b,"n")
+   pica_add(rdau_P60050_a,002Da,record:'pica')
+   pica_add(rdau_P60050_b,002Db,record:'pica')
+end
+
+if marc_match(007/00,'c')
+   set_field(rdau_P60050_a,"Computermedien")
+   set_field(rdau_P60050_b,"c")
+   pica_add(rdau_P60050_a,002Da,record:'pica')
+   pica_add(rdau_P60050_b,002Db,record:'pica')
+end
+
+# 007/01    002E$a$bc
+if marc_match(007/01,'u')
+   set_field(rdau_P60048_a,"Band")
+   set_field(rdau_P60048_b,"nc")
+   pica_add(rdau_P60048_a,002Ea,record:'pica')
+   pica_add(rdau_P60048_b,002Eb,record:'pica')
+end
+
+if marc_match(007/01,'r')
+   set_field(rdau_P60048_a,"Online_Ressource")
+   set_field(rdau_P60048_b,"cr")
+   pica_add(rdau_P60048_a,002Ea,record:'pica')
+   pica_add(rdau_P60048_b,002Eb,record:'pica')
+end
+
+# 016 7/$a$2DE-600
+do marc_each()
+   if marc_match('016[7]$2','DE\-600')
+      marc_map('016[7]$a',zdbid)
+	  replace_all(zdbid,'ZDB\-',"")
+      pica_add(zdbid,006Z0,record:'pica')
+   end
+end
+
+# 020a    004A$0
+marc_map(020a,bibo_isbn,split:1)
+if exists(bibo_isbn)    
+    replace_all(bibo_isbn.*,' .*$','')
+    do maybe()     
+        isbn13(bibo_isbn.*)
+    end    
+    sort_field(bibo_isbn,uniq:1)
+end
+do list(path:bibo_isbn,var:tmp)
+    pica_add(tmp,004A0,force_new:1,record:'pica')
+end
+
+# DOI 024a 004W$0 (DOI-Druckwerk)
+if marc_match(007/0-1,'t[a|b|d|u|z]')
+   marc_map(024a,bibo_doi)
+   pica_add(tmp,004W0,record:'pica')
+end
+
+# DOI 024a 004V$0 (DOI-E-Ressource)
+if marc_match(007/0-1,'cr|sr')
+   marc_map(024a,bibo_doi)
+   pica_add(tmp,004V0,record:'pica')
+end
+
+# 022a    005A$0
+marc_map(022a,bibo_issn,split:1)
+if exists(bibo_issn)    
+    replace_all(bibo_issn.*,' .*$','')
+    do maybe()     
+        issn(bibo_issn.*)
+    end    
+    sort_field(bibo_issn,uniq:1)
+end
+do list(path:bibo_issn,var:tmp)
+    pica_add(tmp,005A0,force_new:1,record:'pica')
+end
+
+# AC-Nummer 009   006Li0
+set_field(owl_sameAs,'OBV')
+pica_add(owl_sameAs,006Li,record:'pica')
+marc_map(009,owl_sameAs)
+pica_add(owl_sameAs,006L0,record:'pica')
+
+# 008 Positionen 7-10 011@$a
+marc_map(008/7-10,dcterms_issued)
+pica_add(dcterms_issued,011@a,record:'pica')
+
+# location 856 017D (print)
+do marc_each()
+   if marc_has(856[41])
+      set_array(field_017D,'017D','')
+	  if marc_match(856$u,'.+')
+         marc_map(856$u,dc_relation)
+         add_field(field_017D.$append,'u')
+         copy_field(dc_relation,field_017D.$append)
+	     add_field(field_017D.$append,'x')
+	     set_field(internal_note,'H')
+	     copy_field(internal_note,field_017D.$append)
+	  end
+	  if marc_match(856$z,'.*')
+	     add_field(field_017D.$append,'z')
+	     marc_map(856$z,'nonpublic_note')
+		 copy_field(nonpublic_note,field_017D.$append)
+	  end
+	  if marc_match(856$3,'\^Volltext\.*')
+	     add_field(field_017C.$append,'3')
+		 set_field(public_note,'Volltext')
+		 copy_field(public_note,field_017C.$append)
+		 add_field(field_017C.$append,'5')
+         set_field(code,'34')
+		 copy_field(code,field_017C.$append)
+	  end
+   end
+   move_field(field_017D,pica.$append) 
+end   
+
+# location 856 017C (online)
+do marc_each()
+   if marc_has(856[40])
+      set_array(field_017C,'017C','')
+	  if marc_match(856$u,'.+')
+	     add_field(field_017C.$append,'u')
+         marc_map(856$u,dc_relation)
+         copy_field(dc_relation,field_017C.$append)
+	     add_field(field_017C.$append,'x')
+	     set_field(internal_note,'H')
+	     copy_field(internal_note,field_017C.$append)
+	  end
+	  if marc_match(856$z,'.*')
+	     add_field(field_017C.$append,'z')
+	     marc_map(856$z,'nonpublic_note')
+		 copy_field(nonpublic_note,field_017C.$append)
+	  end
+	  if marc_match(856$3,'\^Volltext\.*')
+	     add_field(field_017C.$append,'3')
+		 set_field(public_note,'Volltext')
+		 copy_field(public_note,field_017C.$append)
+		 add_field(field_017C.$append,'5')
+         set_field(code,'34')
+		 copy_field(code,field_017C.$append)
+	  end
+   end
+   move_field(field_017C,pica.$append) 
+end   
+
+# related resource 856 017G
+do marc_each()
+#   if marc_has(856[42])
+   if marc_match(8563,'Inhaltsverzeichnis')
+      set_array(field_017G,'017G','')
+      if marc_match(856u,'.+')
+	     add_field(field_017G.$append,'u')
+	     marc_map(856u,dc_relation)
+	     copy_field(dc_relation,field_017G.$append)
+	  end
+      if marc_match(856q,'.+')
+         add_field(field_017G.$append,'q')	  
+	     marc_map(856q,format_type)
+	     copy_field(format_type,field_017G.$append)
+	  end
+	  if marc_match(8563,'.+')
+	     add_field(field_017G.$append,'3')
+	     marc_map(8563,materials_specified)
+	     copy_field(materials_specified,field_017G.$append)
+	  end
+   end
+   move_field(field_017G,pica.$append)
+   remove_field(dc_relation)
+   remove_field(format_type)
+   remove_field(materials_specified)
+end
+   
+# 040e	  010Ee
+if marc_match(040e,"rda")
+   marc_map(040e,cataloging_source)
+   pica_add(cataloging_source,010Ee,record:'pica')
+end
+
+# 6550	 013D$7	
+do marc_each()
+   if marc_match(6550,"(DE-588)")
+      set_array(field_013D,'013D','')
+	  add_field(field_013D.$append,'7')
+      marc_map(6550/8-17,field_013D.$append)
+	  if marc_match(655x,'.+')
+	     add_field(field_013D.$append,'x')
+         marc_map(655x,field_013D.$append)
+	  end
+	  if marc_match(655y,'.+')
+	     add_field(field_013D.$append,'y')
+	     marc_map(655y,field_013D.$append)
+	  end
+	  if marc_match(655z,'.+')
+	     add_field(field_013D.$append,'z')
+	     marc_map(655z,field_013D.$append)
+	  end
+	end
+	move_field(field_013D,pica.$append)
+end	
+
+#if marc_match(6550,"(DE-588)")
+#   marc_map(6550/8-17,form,split:1)
+#   do list(path:form,var:tmp)
+#      pica_add(tmp,013D7,force_new:1,record:'pica')
+#      end
+#end
+
+# 041$a   010@$a 
+marc_map(041a,dc_language,split:1)
+do list(path:dc_language,var:tmp)
+   pica_add(tmp,010@a,force_new:0,record:'pica')
+end
+
+# 044c    019@a
+marc_map(044c,dc_location,split:1)
+do list(path:dc_location,var:tmp)
+   pica_add(tmp,019@a,force_new:0,record:'pica')
+end
+   
+# 245abc    021A$adh
+marc_replace_all(245a,'(\>\>|\<\<)','')
+##245a Nichtsortierzeichen einfügen
+#ger
+unless marc_match(245@,'^(\w{1,5}\s@.*)')
+       marc_replace_all(245a,'^(Der|Die|Das|Des|Dem|Den|Ein|Eines|Einem|Eine|Einen|Einer)\s',"$1 @")
+end
+#eng
+unless marc_match(245@,'^(\w{1,5}\s@.*)')
+       marc_replace_all(245a,'^(The|A|An)\s',"$1 @")
+end
+#fre
+unless marc_match(245@,'^(\w{1,5}\s@.*)')
+       marc_replace_all(245a,'^(Le|La|Les|Des|Un|Une)\s',"$1 @")
+end
+#ita
+unless marc_match(245@,'^(\w{1,5}\s@.*)')
+       marc_replace_all(245a,'^(La|Le|Lo|Gli|I|Il|Un|Una|Uno)\s',"$1 @")
+end
+#por
+unless marc_match(245@,'^(\w{1,5}\s@.*)')
+       marc_replace_all(245a,'^(A|O|As|Os|Um|Uma|Umas|Uns)\s',"$1 @")
+end
+#spa
+unless marc_match(245@,'^(\w{1,5}\s@.*)')
+       marc_replace_all(245a,'^(El|La|Los|Las|Un|Una|Unos|Unas)\s',"$1 @")
+end
+
+#245b - fehlendes UF ergänzen
+marc_replace_all(245a,'(\s*:\s*)','ƒd') #Notlösung für fehlendes UF $b. Es wird keine neues, reguläres UF erzeugt. Noch Lösung finden.
+
+marc_map(245a,dc_title.0)
+
+if marc_has(245c)
+   marc_map(245c,dc_title.1)
+else marc_map(100a,tmp)
+     parse_text(tmp,"(?<surname>.*)\,\s(?<forename>.*)")
+     copy_field(tmp.forename,statement_of_responsebility.0.$append)
+     copy_field(tmp.surname,statement_of_responsebility.0.$append)
+	 join_field(statement_of_responsebility.0,' ')
+     remove_field(tmp)
+     do marc_each()
+        marc_map(700a,tmp)
+            parse_text(tmp,"(?<surname>.*)\,\s(?<forename>.*)")
+            copy_field(tmp.forename,tmp.statement_of_responsebility.$append)
+            copy_field(tmp.surname,tmp.statement_of_responsebility.$append)
+            join_field(tmp.statement_of_responsebility,' ')
+            copy_field(tmp.statement_of_responsebility,statement_of_responsebility.1.$append)  
+	        remove_field(tmp)
+	end
+end
+
+join_field(statement_of_responsebility.1,', ')
+join_field(statement_of_responsebility,', ')
+copy_field(statement_of_responsebility,dc_title.1)
+
+if marc_has(245b)
+   marc_map(245b,dc_title.2)
+end
+
+if exists(dc_title.0)
+   pica_add(dc_title.0,021Aa,record:'pica')
+end
+if exists(dc_title.2)
+   pica_add(dc_title.2,021Ad,record:'pica')
+end
+if exists(dc_title.1)
+   pica_add(dc_title.1,021Ah,record:'pica')
+end
+
+## 100a    028Aa
+#mappe Namen
+marc_map(100a,name)
+# kopiere Namen in ein temporäres Feld für die weitere Verarbeitung
+copy_field(name,tmp.name)
+# zerlege Namen
+split_field(tmp.name,', ')
+# Wenn GND-ID vorhanden
+if marc_match(1000/0-7,'(DE-588)')
+   marc_map(1000,dc_creator_id)
+   replace_all(dc_creator_id,'\(DE-588\)','')
+   prepend(dc_creator_id,'gnd')
+   pica_add(dc_creator_id,028A7,record:'pica')
+else
+   marc_map(100a,name)
+   ## lookup
+   copy_field(name,tmp.sru)
+   prepend(tmp.sru,'pica.per="')
+   append(tmp.sru,'" and pica.bbg=Tp*')
+   search_sru(tmp.sru,'http://sru.k10plus.de/bmsonline!rec=2',recordschema:picaxml,parser:picaxml,fixes:'./fix/sru_map.fix')
+   if is_array(tmp.sru)
+	  copy_field(name,dc_creator.$append.name)
+      move_field(tmp.sru.*.per,tmp.gndrefs.$append)
+      move_field(tmp.gndrefs,dc_creator.$last.gndrefs)
+	  if exists(dc_creator.*.gndrefs.1)
+		   pica_add(tmp.name.1,028Ad,record:'pica')
+           pica_add(tmp.name.0,028Aa,record:'pica')
+		   set_array(note,'AutorIn in der Vorlage [')
+		   copy_field(name,note.1)
+		   set_field(note.2,'] multiple BMS-ID')
+		   join_field(note,'')
+		   pica_add(note,047Aa,record:'pica')
+	  else
+           set_array(note,'AutorIn in der Vorlage [')
+		   copy_field(name,note.1)
+		   set_field(note.2,'] maschinell zugeordnet')
+		   join_field(note,'')
+		   pica_add(dc_creator.*.gndrefs,028A9,record:'pica')
+		   pica_add(note,047Aa,record:'pica')
+      end
+   else
+        pica_add(tmp.name.1,028Ad,record:'pica')
+        pica_add(tmp.name.0,028Aa,record:'pica') 
+  end
+   remove_field(tmp)
+end
+
+# mappe die `relator terms` als Liste
+marc_map(100$4,tmp.relatorcode,split:1)
+do list(path:tmp.relatorcode,var:var)
+   # Kopiere `relator code` für lookup
+   copy_field(var,tmp.relatorterm)
+   # # Kopiere `relator code` für $4
+   copy_field(var,tmp.relatorcode)
+   # lookup der `relator terms`
+   lookup(tmp.relatorterm,./dictionary/028C_mapping.csv)
+   # füge relatorterm dem PICA-Unterfeld 'B' hinzu
+   pica_add(tmp.relatorterm,028AB,force_new:0,record:'pica')
+   # füge relatorcode dem PICA-Unterfeld 'B' hinzu
+   pica_add(tmp.relatorcode,028A4,force_new:0,record:'pica')
+end   
+
+# 362a    031@$a
+marc_map(362a,dc_coverage,split:1)
+join_field(dc_coverage,'; ')
+pica_add(dc_coverage,031@a,record:'pica')
+
+# 008/773     031A
+if marc_match(LDR/7,'a')
+   marc_map(008/7-10,dcterms_bibliographicCitation.0)
+   pica_add(dcterms_bibliographicCitation.0,031Aj,record:'pica')
+end
+
+marc_map(773g,dcterms_bibliographicCitation.1)
+replace_all(dcterms_bibliographicCitation.1,"Seite ","")
+pica_add(dcterms_bibliographicCitation.1,031Ah,record:'pica')
+
+# 264a    033A$p  Erscheinungsort
+marc_map(264a,rdau_P60333,split:1)
+do list(path:rdau_P60333,var:tmp)
+    pica_add(tmp,033Ap,force_new:0,record:'pica')
+end	   
+
+# 264b    033A$n  
+marc_map(264b,dc_publisher,split:1)
+do list(path:dc_publisher,var:tmp)
+    pica_add(tmp,033An,force_new:0,record:'pica')
+end
+
+# 300e   034K$a
+marc_map(300e,isbd_P1025)
+pica_add(isbd_P1025,034Ka,record:'pica')
+
+# 300b	  034M$a	other (??physical details??)
+marc_map(300b,mods_physicalDetails)
+pica_add(mods_physicalDetails,034Ma,record:'pica')
+
+# Physical description 300a 034D$a
+marc_map(300a,isbd_1053)
+pica_add(isbd_1053,034Da,record:'pica')
+
+# 490a	  036E$a
+marc_map(490a,dc_bibliographicCitation)
+pica_add(dc_bibliographicCitation,036Ea,record:'pica')
+
+# 490v	  036E$l
+marc_map(490v,dc_bibliographicCitation)
+pica_add(dc_bibliographicCitation,036El,record:'pica')
+
+# 830wv  	4180-4189/036F$7l
+do marc_each()
+   if marc_match(830,'\(AT-OBV\)')
+      set_array(field_036F,'036F','')
+	  add_field(field_036F.$append,'X')
+	  marc_map(830$v,designation)
+	  copy_field(designation,field_036F.$append)
+	  add_field(field_036F.$append,'7')
+	  marc_map(830$w,field_036F.$append)
+	  add_field(field_036F.$append,'l')
+	  copy_field(designation,field_036F.$append)
+   end
+   move_field(field_036F,pica.$append)
+   remove_field(designation)
+end
+
+# 500a    037A Sonstige Anmerkungen
+marc_map(500a,other_comments,split:1)
+do list(path:other_comments,var:tmp)
+   pica_add(tmp,037Aa,force_new:1,record:'pica')
+end
+
+# 502bcd    037Cdef (w) Hochschulschriftenvermerk
+do marc_each()
+   if marc_has(502$b)
+      set_array(field_037C,'037C','')
+	  if marc_has(502$b)
+         add_field(field_037C.$append,'d')
+         marc_map(502$b,degree_type)
+         copy_field(degree_type,field_037C.$append)
+	  end
+	  if marc_has(502$c)
+         add_field(field_037C.$append,'e')
+         marc_map(502$c,degree_institution)
+         copy_field(degree_institution,field_037C.$append)
+	  end
+	  if marc_has(502$d)
+         add_field(field_037C.$append,'f')
+         marc_map(502$d,degree_year)
+         copy_field(degree_year,field_037C.$append)
+	  end
+   end
+   move_field(field_037C,pica.$append)
+   remove_field(degree_type)
+   remove_field(degree_institution)
+   remove_field(degree_year)
+end
+
+#########
+##Dieser Teil wird durch das "importPICA"-Skript übernommen. jweilige PPN wird automatisch vergeben.
+# 773w/it   4241/039B7/it (w) Beziehung zur größeren Einheit (As->Aa)
+#if marc_has(773w)
+#   marc_map(773w,dcterms_isPartOf)
+#   pica_add(dcterms_isPartOf,039B7,record:'pica')
+#else
+#  marc_map(773it,dcterms_isPartOf,split:1)
+#  pica_add(dcterms_isPartOf,039Bit,record:'pica')
+#end
+
+
+# 773w    4241/039B9 (w) Beziehung zur größeren Einheit (As->Aa); AC-> PPN
+# marc_map(773w,dcterms_isPartOf)
+# pica_add(dcterms_isPartOf,039B9,record:'pica')
+#########
+
+# 520a	  047I$a
+marc_map(520a,dc_abstract,split:1)
+do list(path:dc_abstract,var:tmp)
+   pica_add(tmp,047Ia,force_new:1,record:'pica')
+end
+
+# 530a    037G$a
+marc_map(530a,dcterms_hasVersion,split:1)
+join_field(dcterms_hasVersion,'; ')
+pica_add(dcterms_hasVersion,037Ga,record:'pica')
+
+# 650[ 0]a 044ASa
+marc_map('650[,0]a',blt_TopicLCSH,split:1)
+do list(path:blt_TopicLCSH,var:tmp)
+    pica_add(tmp,044Aa,force_new:1,record:'pica')
+end
+
+# 650a   044N$a
+marc_map('650[,7]a',dc_subject,split:1)
+sort_field(dc_subject)
+uniq(dc_subject)
+do list(path:dc_subject,var:tmp)
+    pica_add(tmp,044Na,force_new:1,record:'pica')
+end
+
+# 700$0a4   028C7da7/94
+##Vorgehen
+## A Wenn GND-ID vorhanden, dann ID in UF $d, $a, $7, $4 übernehmen
+## B Wenn GND-ID nicht vorhanden, dann lookup für Normdatensatz-ID BMS online integrieren (SRU)
+## C Wenn lookup erfolglos, dann $d, $a, $4 übernehmen
+
+do marc_each()
+   # 700 existiert
+   if marc_match(700,'.*')
+      # mappe Namen
+	  marc_map(700$a,name)
+	  #kopiere Namen in ein temporäres Feld zur weiteren Verarbeitung
+	  copy_field(name,tmp.name)
+	  # Zerlege Vor- und Zunamen
+	  split_field(tmp.name,', ')
+	  # baue PICA-Feld-Array manuell auf
+      set_array(field_028C,'028C','')
+      # mappe ID wenn GND-ID
+      if marc_match(7000/0-7,"(DE-588)")
+	     # füge Unterfeld-Code '7' dem PICA-Feld-Array hinzu
+         add_field(field_028C.$append,'7')
+         # füge Unterfeld-Wert dem PICA-Feld-Array hinzu
+         marc_map(700$0,field_028C.$append)
+         # bereinige ID
+         replace_all(field_028C.$last,'\(DE-588\)','')
+	  else
+	     ## lookup der BMS-ID über SRU BMS online
+         # kopiere Namen nach tmp.sru
+		 copy_field(name,tmp.sru)
+		 # bereite Name als SRU-Query auf
+         prepend(tmp.sru,'pica.per="')
+		 append(tmp.sru,'" and pica.bbg=Tp*')
+		 # # SRU-Abfrage inkl. Mapping mittels weiteren Fix
+         search_sru(tmp.sru,'http://sru.k10plus.de/bmsonline!rec=2',recordschema:picaxml,parser:picaxml,fixes:'./fix/sru_map.fix')
+		 # wenn es Treffer gibt ist das Ergebnis eine Liste
+         if is_array(tmp.sru)
+		    # kopiere Namen und die damit gefunden GND-Einträge in ein neues Feld
+		    copy_field(name,dc_contributor.$append.name)
+		    move_field(tmp.sru.*.per,tmp.gndrefs.$append)
+            move_field(tmp.gndrefs,dc_contributor.$last.gndrefs)
+			# Wenn mehr als eine ID erkannt wurden
+		    if exists(dc_contributor.*.gndrefs.1)
+			   # füge Unterfeld-Code 'd' dem PICA-Feld-Array hinzu
+		       add_field(field_028C.$append,'d')
+			   # füge tmp.name.1 dem PICA-Feld-Array hinzu
+			   copy_field(tmp.name.1,field_028C.$append)
+			   # füge Unterfeld-Code 'a' dem PICA-Feld-Array hinzu
+			   add_field(field_028C.$append,'a')
+			   # füge tmp.name.0 dem PICA-Feld-Array hinzu
+			   copy_field(tmp.name.0,field_028C.$append)
+			   # baue Array für zusätzliche Notiz manuell auf
+			   set_array(note,'MitwirkendeR in der Vorlage [')
+		       copy_field(name,note.1)
+		       set_field(note.2,'] multiple BMS-ID')
+		       join_field(note,'')
+			   # baue PICA-Feld-Array für zusätzliche Notiz manuell auf
+			   set_array(field_047A,'047A','')
+			   # füge Unterfeld-Code 'a' dem PICA-Feld-Array hinzu
+			   add_field(field_047A.$append,'a')
+			   # füge Unterfeld-Wert dem PICA-Feld-Array hinzu
+		       copy_field(note,field_047A.$append)
+            else 
+			   # Wenn nur eine ID per SRU erkannt worden ist
+			   # füge Unterfeld-Code '9' dem PICA-Feld-Array hinzu
+			   add_field(field_028C.$append,'9')
+			   # kopiere die ID aus der Ergebnisliste nach bms_id
+			   copy_field(dc_contributor.*.gndrefs,bms_id)
+               # füge Unterfeld-Wert (PPN) dem PICA-Feld-Array hinzu
+			   copy_field(bms_id.0,field_028C.$append)
+			   # baue Array für zusätzliche Notiz manuell auf
+			   set_array(note,'MitwirkendeR in der Vorlage [')
+		       copy_field(name,note.1)
+		       set_field(note.2,'] maschinell zugeordnet')
+		       join_field(note,'')
+			   # baue PICA-Feld-Array für zusätzliche Notiz manuell auf
+			   set_array(field_047A,'047A','')
+			   # füge Unterfeld-Code 'a' dem PICA-Feld-Array hinzu
+			   add_field(field_047A.$append,'a')
+			   # füge Unterfeld-Wert dem PICA-Feld-Array hinzu
+		       copy_field(note,field_047A.$append)
+            end
+		 else
+		    # Wenn keine ID per SRU erkannt worden ist
+			# füge Unterfeld-Code 'd' dem PICA-Feld-Array hinzu
+	        add_field(field_028C.$append,'d')
+			# füge tmp.name.1 dem PICA-Feld-Array hinzu
+		    copy_field(tmp.name.1,field_028C.$append)
+            # füge Unterfeld-Code 'a' dem PICA-Feld-Array hinzu			
+		    add_field(field_028C.$append,'a')
+            # füge tmp.name.0 dem PICA-Feld-Array hinzu			
+		    copy_field(tmp.name.0,field_028C.$append)
+	     end
+	   end
+         # mappe die `relator terms` als Liste
+         marc_map(700$4,tmp.relatorcode,split:1)
+         do list(path:tmp.relatorcode,var:var)
+            # Kopiere `relator code`
+            copy_field(var,tmp.relatorterm)
+            # lookup der `relator terms`
+            lookup(tmp.relatorterm,./dictionary/028C_mapping.csv)
+            # füge Unterfeld-Code dem PICA-Feld-Array hinzu
+            add_field(field_028C.$append,'B')
+            # füge Unterfeld-Wert dem PICA-Feld-Array hinzu
+            copy_field(tmp.relatorterm,field_028C.$append)
+            # füge Unterfeld-Code dem PICA-Feld-Array hinzu
+            add_field(field_028C.$append,'4')
+            # füge Unterfeld-Wert dem PICA-Feld-Array hinzu
+            copy_field(var,field_028C.$append)
+         end
+   end
+   # füge den PICA-Feld-Array dem PICA-Record-Array hinzu
+   move_field(field_028C,pica.$append) 
+   move_field(field_047A,pica.$append)	  
+   remove_field(tmp)
+   remove_field(note)
+   remove_field(dc_contributor.*)
+   remove_field(name)  
+   remove_field(bms_id)   
+end
+
+# 710$a$0	029F$a$9
+do marc_each()
+   if marc_match(710,'.*')
+      if marc_match(7100/0-7,"(DE-588)")
+         set_array(field_029F,'029F','')
+	     add_field(field_029F.$append,'7')
+	     marc_map(7100,corporate_id)
+	     replace_all(corporate_id,'\(DE-588\)','')
+	     copy_field(corporate_id,field_029F.$append)
+      end
+      # mappe die `relator terms` als Liste
+      marc_map(710$4,tmp.relatorcode,split:1)
+      do list(path:tmp.relatorcode,var:var)
+         # Kopiere `relator code`
+         copy_field(var,tmp.relatorterm)
+         # lookup der `relator terms`
+         lookup(tmp.relatorterm,./dictionary/028C_mapping.csv)
+         # füge Unterfeld-Code dem PICA-Feld-Array hinzu
+         add_field(field_029F.$append,'B')
+         # füge Unterfeld-Wert dem PICA-Feld-Array hinzu
+         copy_field(tmp.relatorterm,field_029F.$append)
+         # füge Unterfeld-Code dem PICA-Feld-Array hinzu
+         add_field(field_029F.$append,'4')
+         # füge Unterfeld-Wert dem PICA-Feld-Array hinzu
+         copy_field(var,field_029F.$append)
+      end
+      move_field(field_029F,pica.$append) 
+      remove_field(corporate_id)
+      remove_field(corporate_name)
+      remove_field(tmp)
+   end   
+end 
+
+# 971		028C
+do marc_each()
+   # 971 mit Namen existiert
+   if marc_match(971,'\w{2,},\s\w{2,}')
+      # mappe Namen
+	  marc_map(971$a,name)
+	  #kopiere Namen in ein temporäres Feld zur weiteren Verarbeitung
+	  copy_field(name,tmp.name)
+	  # Zerlege Vor- und Zunamen
+	  split_field(tmp.name,', ')
+	  # baue PICA-Feld-Array manuell auf
+      set_array(field_028C,'028C','')
+      # mappe ID wenn GND-ID
+      if marc_match(9710/0-7,"(DE-588)")
+	     # füge Unterfeld-Code '7' dem PICA-Feld-Array hinzu
+         add_field(field_028C.$append,'7')
+         # füge Unterfeld-Wert dem PICA-Feld-Array hinzu
+         marc_map(971$0,field_028C.$append)
+         # bereinige ID
+         replace_all(field_028C.$last,'\(DE-588\)','')
+	  else
+	     ## lookup der BMS-ID über SRU BMS online
+         # kopiere Namen nach tmp.sru
+		 copy_field(name,tmp.sru)
+		 # bereite Name als SRU-Query auf
+         prepend(tmp.sru,'pica.per="')
+		 append(tmp.sru,'" and pica.bbg=Tp*')
+		 # # SRU-Abfrage inkl. Mapping mittels weiteren Fix
+         search_sru(tmp.sru,'http://sru.k10plus.de/bmsonline!rec=2',recordschema:picaxml,parser:picaxml,fixes:'./fix/sru_map.fix')
+		 # wenn es Treffer gibt ist das Ergebnis eine Liste
+         if is_array(tmp.sru)
+		    # kopiere Namen und die damit gefunden GND-Einträge in ein neues Feld
+		    copy_field(name,academic_supervisor.$append.name)
+		    move_field(tmp.sru.*.per,tmp.gndrefs.$append)
+            move_field(tmp.gndrefs,academic_supervisor.$last.gndrefs)
+			# Wenn mehr als eine ID erkannt wurden
+		    if exists(academic_supervisor.*.gndrefs.1)
+			   # füge Unterfeld-Code 'd' dem PICA-Feld-Array hinzu
+		       add_field(field_028C.$append,'d')
+			   # füge tmp.name.1 dem PICA-Feld-Array hinzu
+			   copy_field(tmp.name.1,field_028C.$append)
+			   # füge Unterfeld-Code 'a' dem PICA-Feld-Array hinzu
+			   add_field(field_028C.$append,'a')
+			   # füge tmp.name.0 dem PICA-Feld-Array hinzu
+			   copy_field(tmp.name.0,field_028C.$append)
+			   # baue Array für zusätzliche Notiz manuell auf
+			   set_array(note,'AkademischeR BetreuerIn in der Vorlage [')
+		       copy_field(name,note.1)
+		       set_field(note.2,'] multiple BMS-ID')
+		       join_field(note,'')
+			   # baue PICA-Feld-Array für zusätzliche Notiz manuell auf
+			   set_array(field_047A,'047A','')
+			   # füge Unterfeld-Code 'a' dem PICA-Feld-Array hinzu
+			   add_field(field_047A.$append,'a')
+			   # füge Unterfeld-Wert dem PICA-Feld-Array hinzu
+		       copy_field(note,field_047A.$append)
+            else 
+			   # Wenn nur eine ID per SRU erkannt worden ist
+			   # füge Unterfeld-Code '9' dem PICA-Feld-Array hinzu
+			   add_field(field_028C.$append,'9')
+			   # kopiere die ID aus der Ergebnisliste nach bms_id
+			   copy_field(academic_supervisor.*.gndrefs,bms_id)
+               # füge Unterfeld-Wert (PPN) dem PICA-Feld-Array hinzu
+			   copy_field(bms_id.0,field_028C.$append)
+			   # baue Array für zusätzliche Notiz manuell auf
+			   set_array(note,'AkademischeR BetreuerIn in der Vorlage [')
+		       copy_field(name,note.1)
+		       set_field(note.2,'] maschinell zugeordnet')
+		       join_field(note,'')
+			   # baue PICA-Feld-Array für zusätzliche Notiz manuell auf
+			   set_array(field_047A,'047A','')
+			   # füge Unterfeld-Code 'a' dem PICA-Feld-Array hinzu
+			   add_field(field_047A.$append,'a')
+			   # füge Unterfeld-Wert dem PICA-Feld-Array hinzu
+		       copy_field(note,field_047A.$append)
+            end
+		 else
+		    # Wenn keine ID per SRU erkannt worden ist
+			# füge Unterfeld-Code 'd' dem PICA-Feld-Array hinzu
+	        add_field(field_028C.$append,'d')
+			# füge tmp.name.1 dem PICA-Feld-Array hinzu
+		    copy_field(tmp.name.1,field_028C.$append)
+            # füge Unterfeld-Code 'a' dem PICA-Feld-Array hinzu			
+		    add_field(field_028C.$append,'a')
+            # füge tmp.name.0 dem PICA-Feld-Array hinzu			
+		    copy_field(tmp.name.0,field_028C.$append)
+	     end
+	   end
+	   # füge relator_term und relator_code an
+	   add_field(field_028C.$append,'B')
+	   set_field(relator_term,'AkademischeR BetreuerIn')
+	   copy_field(relator_term,field_028C.$append)
+	   add_field(field_028C.$append,'4')
+	   set_field(relator_code,'dgs')
+	   copy_field(relator_code,field_028C.$append)
+   end
+   # füge den PICA-Feld-Array dem PICA-Record-Array hinzu
+   move_field(field_028C,pica.$append) 
+   move_field(field_047A,pica.$append)	  
+   remove_field(tmp)
+   remove_field(note)
+   remove_field(academic_supervisor.*)   
+end  
+	
+# 655		030F
+do marc_each()
+   if marc_match(655a,'Konferenz.*')
+      set_array(field_030F,'030F','')
+      add_field(field_030F.$append,'a')
+      set_field(conference,'Konferenz')
+      copy_field(conference,field_030F.$append)
+      add_field(field_030F.$append,'k')
+	  marc_map(655z,'conference_place')
+	  copy_field(conference_place,field_030F.$append)
+      add_field(field_030F.$append,'p')
+	  marc_map(655y,'conference_year')
+	  copy_field(conference_year,field_030F.$append)
+   end
+   move_field(field_030F,pica.$append)
+   remove_field(conference.*)
+end
+
+# Schlagwortreihe I
+if marc_match('689[0,]0','(DE-588)')
+   marc_map('689[0,]0/8-17',dc_subject,split:1)
+   do list(path:dc_subject,var:tmp)
+      pica_add(tmp,044K[00]7,force_new:1,record:'pica')
+   end
+end
+
+# Schlagwortreihe II
+if marc_match('689[1,]0','(DE-588)')
+   marc_map('689[1,]0/8-17',dc_subject,split:1)
+   do list(path:dc_subject,var:tmp)
+      pica_add(tmp,044K[01]7,force_new:1,record:'pica')
+   end
+end
+
+# Schlagwortreihe III
+if marc_match('689[2,]0','(DE-588)')
+   marc_map('689[2,]0/8-17',dc_subject,split:1)
+   do list(path:dc_subject,var:tmp)
+      pica_add(tmp,044K[02]7,force_new:1,record:'pica')
+   end
+end
+
+# Zeitschlagwort I
+do marc_each()
+   if marc_match('689[0,]A','z')
+      marc_map('689[0,]a',dc_subject,split:1)
+      do list(path:dc_subject,var:tmp)
+         pica_add(tmp,044K/00z,force_new:1,record:'pica')
+         end
+	end
+end
+
+# Zeitschlagwort II
+do marc_each()
+   if marc_match('689[1,]A','z')
+      marc_map('689[1,]a',dc_subject,split:1)
+      do list(path:dc_subject,var:tmp)
+         pica_add(tmp,044K/01z,force_new:1,record:'pica')
+         end
+	end
+end
+
+# Zeitschlagwort III
+do marc_each()
+   if marc_match(689[2]A,'z')
+      marc_map(689a,dc_subject,split:1)
+      sort_field(dc_subject)
+      uniq(dc_subject)
+      do list(path:dc_subject,var:tmp)
+         pica_add(tmp,044K/03z,force_new:1,record:'pica')
+         end
+	end
+end
+
+# 084	045G (w) Sachgruppen DNB
+do marc_each()
+   if marc_match(0842,'sdnb')
+      set_array(field_045G,'045G','')
+      marc_map(084a,tmp.sgdnb,split:1)
+	  do list(path:tmp.sgdnb,var:var)
+         copy_field(var,sg_dnb)    
+	     add_field(field_045G.$append,'a')
+		 move_field(sg_dnb,field_045G.$append)
+		 end
+	  add_field(field_045G.$append,'A')
+	  marc_map(084q,agency)
+	  copy_field(agency,field_045G.$append)
+	end
+	move_field(field_045G,pica.$append)
+	remove_field(tmp) 
+	remove_field(sg_dnb)
+    remove_field(agency)	
+end	
+	  
+# 082	045H (w) DDC full
+do marc_each()
+   if marc_match(082q,'DE-101')
+      set_array(field_045H,'045H','00')
+	  marc_map(082a,classification_number)
+	  marc_map(082q,agency)
+	  marc_map(0822,edition)
+	  replace_all(edition,"\/","")
+	  prepend(edition,'DDC')
+	  add_field(field_045H.$append,'e')
+	  copy_field(edition,field_045H.$append)
+      add_field(field_045H.$append,'a')
+	  copy_field(classification_number,field_045H.$append)
+	  add_field(field_045H.$append,'A')
+	  copy_field(agency,field_045H.$append)
+   end
+   move_field(field_045H,pica.$append)
+   remove_field(classification_number)
+   remove_field(agency) 
+   remove_field(edition)    
+end
+
+	  
+# 084 a+2		045Qa
+do marc_each()
+   if marc_match(0842,"bkl")
+      marc_map(084a,dc_subject_bkl,split:1)	
+      do list(path:dc_subject_bkl,var:tmp)   
+         pica_add(dc_subject_bkl,045Q/01a,force_new:1,record:'pica')
+	     end
+	end	 
+end
+
+# 246a		047Ca (w)
+marc_map(246a,dcterms_alternative,split:1)
+do list(path:dcterms_alternative,var:tmp)
+   pica_add(tmp,047Ca,force_new:1,record:'pica')
+end
+
+# 546$a		046L$a (w)
+marc_map(546a,language_note,split:1)
+do list(path:language_note,var:tmp)
+   pica_add(tmp,046La,force_new:1,record:'pica')
+end
+
+#035a 206X0 Akzessionsnummer der ÖNB, wird evtl. für die PPN-Verknüpfung der an die Bände angehängten Aufsätze während der Einspielung benötigt
+#do marc_each()
+#   if marc_match(035a,"(AT-OBV)")
+#      marc_map(035a,owl_sameAs,split:1)
+#      pica_add(owl_sameAs,127Ka,force_new:1,record:'pica')
+#   end
+#end
+
+# 653a	144Za (w) = unkontrollierte Schlagwörter
+marc_map(653a,subjects_alternative,split:1)
+do list(path:subjects_alternative,var:tmp)
+   pica_add(tmp,144Za,force_new:1,record:'pica')
+end
+
+
+# 208@b
+set_field(selection_code,"z")
+pica_add(selection_code,208@b,record:'pica')
+
+# 209Ba
+do marc_each()
+   if marc_match(980a,'RILM\d{6}')
+      marc_map(980a,timestamp)
+    end
+end
+replace_all(timestamp,'RILM','IMOENB: ')
+pica_add(timestamp,209Ba,force_new:1,record:'pica')
+
+set_field(timestamp,'99')
+pica_add(timestamp,209Bx,record:'pica')
+
+
+remove_field(record)
+move_field(pica,record)

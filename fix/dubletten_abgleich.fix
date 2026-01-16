@@ -1,0 +1,17 @@
+##Daten der BMS - export to YAML
+#ppn
+pica_map(003@$0,ppn)
+#bbg
+pica_map(002@$0,bbg)
+#jah
+pica_map(011@$a,jah) 
+#tit
+pica_map(021A,title)
+#abstract
+pica_map(047I$a,abstract)
+#keywords
+pica_map(044K$a,keyword)
+
+remove(record)
+
+sleep(1,SECONDS) 

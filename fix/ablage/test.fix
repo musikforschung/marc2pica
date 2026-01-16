@@ -1,0 +1,32 @@
+log('SRU Request', level : WARN)
+
+if marc_match(LDR/7,'a')
+   if marc_has(773$w)
+      do marc_each()
+         marc_map(773$w,tmp,split:1)
+	     replace_all(tmp.*,'\(AT-OBV\)',"")
+	     prepend(tmp.*,"alma.local_control_field_009=")
+	     copy_field(tmp.*,sru_query)
+	     rm(tmp)
+		 search_sru(sru_query,'https://obv-at-oenb.alma.exlibrisgroup.com/view/sru/43ACC_ONB',recordschema:marcxml,parser:marcxml,fixes:"marc_map(022$a,iss.$append);rm(record)")
+		 if is_array(sru_query)
+		    do list()
+			   copy_field(sru_query.*.iss,sru_query_2)
+			   issn(sru_query_2.*)
+			   sort(sru_query_2)
+			   uniq(sru_query_2)
+			   prepend(sru_query_2.*,"pica.iss=")
+			end
+	     end
+		 search_sru(sru_query_2.*,'http://sru.k10plus.de/bmsonline!rec=1',recordschema:picaxml,parser:picaxml,fixes:"pica_map(003@$0,PPN);retain(PPN)")
+      end
+   end
+end
+
+
+
+
+remove(record)
+
+#do list(path:sru_query,var:var)
+#,fixes:"pica_map(003@$0,PPN);retain(PPN)"

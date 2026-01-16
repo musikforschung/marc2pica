@@ -1,0 +1,85 @@
+# catmandu convert PICA --type plain to Null --fix ./fix/773_check.fix < oenb_202501.pp
+
+
+# SRU request:
+# logging
+log('SRU Request', level : WARN)
+
+if pica_match(002@$0/1,'a|b|c|d|f|F|v')
+   pica_map(006L$0,acnumber)
+   #issn
+   if pica_match(005A$0,'\d.+')
+      pica_map(005A$0,tmp.iss.$append)
+      issn(tmp.iss.*)
+      sort(tmp.iss)
+      uniq(tmp.iss)
+      prepend(tmp.iss.*,"pica.iss=")
+      join_field(tmp.iss," OR ")
+      copy_field(tmp.iss,query.0)
+      rm(tmp)
+   end
+   #zdbid
+   if pica_match(006Z$0,'\d.+')
+     pica_map(006Z$0,query.1)
+     prepend(query.1,"pica.zdb=")  
+   end
+   #isbn
+   if pica_match(004A$0,'\d.+')
+      pica_map(004A$0,tmp.isb.$append)
+      sort(tmp.isb)
+      uniq(tmp.isb)
+      prepend(tmp.isb.*,"pica.isb=")
+      join_field(tmp.isb," OR ")
+      copy_field(tmp.isb,query.2)
+      rm(tmp)
+   end
+   join_field(query,' OR ')
+   copy_field(query,sru_query.0)
+   append(sru_query.0.,")")
+   prepend(sru_query.0,"(")
+   rm(query)
+   #title
+   if pica_match(021A$a,'.*')
+      pica_map(021A$a,tmp.tit)
+      downcase(tmp.tit)
+      replace_all(tmp.tit,"\ :.*|\..*|\!.*|\?.*",'')
+      replace_all(tmp.tit,"\»|\«|\"|\>|\<|\(|\)|\:|\?|\!|\'\"|\@|\&|\/",'')
+      replace_all(tmp.tit,"\-",' ')
+      prepend(tmp.tit,'pica.tit="')
+      append(tmp.tit,'"')
+      copy_field(tmp.tit,'query.0')
+      rm(tmp)   
+   end   
+   #bbg
+   pica_map(002@$0/0-1,tmp.bbg)
+   append(tmp.bbg,"*")
+   prepend(tmp.bbg,"pica.bbg=")
+   copy_field(tmp.bbg,query.1)
+   rm(tmp)
+   #erstelle sru_query  
+   join_field(query,' AND ')
+   copy_field(query,sru_query.1)
+   append(sru_query.1.,")")
+   prepend(sru_query.1,"(")
+   rm(query)
+   join_field(sru_query," AND ")
+   #sru-abfrage
+   search_sru(sru_query,'http://sru.k10plus.de/bmsonline!rec=1',recordschema:picaxml,parser:picaxml,fixes:'./fix/830_check_map.fix')
+   if is_array(sru_query)
+      add_field(matched_records)
+      do list(path:sru_query,var:var)
+         copy_field(var.match,matched_records.$append)
+      end
+      join_field(matched_records,';')
+      count(sru_query)
+      cp(sru_query,matched_count)
+      rm(sru_query)
+      add_to_exporter(.,CSV,file:./data/dubletten_773.csv,fields:'acnumber,matched_count,matched_records')
+   else
+      add_to_exporter(.,PICA,type:plain,file:einspielung_3.pp)
+   end
+end
+
+
+
+   

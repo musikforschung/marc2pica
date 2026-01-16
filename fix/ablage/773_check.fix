@@ -1,0 +1,75 @@
+#catmandu convert PICA --type plain to Null --fix ./fix/773_check.fix < oenb_202501.pp
+
+log('SRU Request', level : WARN)
+
+#Ab/Ad issn
+if pica_match(002@$0,"Ab|Ad")
+   pica_map(006L$0,acnumber)
+   pica_map(002@$0/0-1,bbg)
+   append(bbg,"*")
+   if pica_match(005A$0,'\d+')
+      pica_map(005A$0,isn.$append)
+      issn(isn.*)
+      sort(isn)
+      uniq(isn)
+      prepend(isn.*,"pica.iss=")
+      if exists(isn.1)
+         join_field(isn,' OR ')
+      else
+         join_field(isn,"")
+      end
+      copy_field(isn,sru_query.$append)
+      copy_field(bbg,sru_query.$append)
+      prepend(sru_query.1,"pica.bbg=")
+      join_field(sru_query," AND ")
+      prepend(sru_query,"(")
+      append(sru_query,")")
+      search_sru(sru_query,'http://sru.k10plus.de/bmsonline!rec=1',recordschema:picaxml,parser:picaxml,fixes:"pica_map(003@$0,ppn);retain(ppn)")
+      if is_array(sru_query)
+        copy_field(sru_query.*.ppn,ppn)
+      else
+        set_field(ppn,nomatch)
+      end
+   else
+      set_field(ppn,nomatch)
+   end	  
+   add_to_exporter(.,CSV,fields:'acnumber,ppn',file:./data/773_check.csv)
+end
+
+if pica_match(002@$0,"Aa")
+   pica_map(006L$0,acnumber)
+   pica_map(002@$0/0-1,bbg)
+   append(bbg,"*")
+   if pica_match(004A$0,'\d+')
+      pica_map(004A$0,isb.$append)
+#      isbn_versions(isb.*)
+      sort(isb)
+      uniq(isb)
+      prepend(isb.*,"pica.isb=")
+      if exists(isb.1)
+         join_field(isb,' OR ')
+      else
+         join_field(isb,"")
+      end
+      copy_field(isb,sru_query.$append)
+      copy_field(bbg,sru_query.$append)
+      prepend(sru_query.1,"pica.bbg=")
+      join_field(sru_query," AND ")
+      prepend(sru_query,"(")
+      append(sru_query,")")
+      search_sru(sru_query,'http://sru.k10plus.de/bmsonline!rec=1',recordschema:picaxml,parser:picaxml,fixes:"pica_map(003@$0,ppn);retain(ppn)")
+      if is_array(sru_query)
+        copy_field(sru_query.*.ppn,ppn)
+      else
+        set_field(ppn,nomatch)
+      end
+   else
+      set_field(ppn,nomatch)
+   end	  
+   add_to_exporter(.,CSV,fields:'acnumber,ppn',file:./data/773_check_aa.csv)
+end
+
+
+remove(record)   
+#select exists(isn)  
+ 

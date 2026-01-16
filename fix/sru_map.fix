@@ -1,0 +1,9 @@
+# sru_map.fix
+# catmandu convert SRU --base 'http://sru.k10plus.de/bmsonline' --query 'pica.per="Rienäcker, Gerd" and pica.bbg=Tp*' --recordSchema picaxml --parser picaxml --fix sru_map.fix to YAML
+
+# idn
+pica_map(003@$0,per)
+
+retain_field(per)
+
+sleep(1,SECONDS)

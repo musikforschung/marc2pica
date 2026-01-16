@@ -1,0 +1,18 @@
+# catmandu convert MARC --type MARCMaker to Null --fix ./fix/sru_request_ad.fix < oenb_202501.mrk
+
+
+log('SRU Request', level : WARN)
+do marc_each()
+   if marc_match(830$w,'\(AT-OBV\)AC\d{7,}')
+      marc_map(830$w,tmp.sru)
+      replace_all(tmp.sru,'\(AT-OBV\)',"")
+      prepend(tmp.sru,"alma.local_control_field_009=")
+      search_sru(tmp.sru,'https://obv-at-oenb.alma.exlibrisgroup.com/view/sru/43ACC_ONB',recordschema:marcxml,parser:marcxml)
+      if is_array(tmp.sru)
+         do list(path:tmp.sru,var:var)
+	        add_to_exporter(var,PICA,type:plain,fix:./fix/marc2pica_oenb.fix,file:./data/oenb_ad.pp)
+         end
+      end
+   end  
+   rm(tmp.sru)   
+end

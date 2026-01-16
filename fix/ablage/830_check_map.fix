@@ -1,0 +1,13 @@
+# 003@ PPN
+pica_map(003@$0,match.0)
+
+# 004A ISBN
+pica_map(004A$0,match.1)
+
+# 002@ Mat
+pica_map(002@$0,match.2)
+
+join_field(match,', ')
+retain(match)
+
+sleep(1,SECONDS)

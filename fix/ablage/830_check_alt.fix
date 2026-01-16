@@ -1,0 +1,25 @@
+#ISBN
+if pica_match(004A$0,'\d.+')
+   pica_map(003@$0,PPN)
+   add_field(sru.query.0,'(pica.bbg=aa* or pica.bbg=af*)')
+   pica_map(004A$0,sru.isb)
+   prepend(sru.isb,'(pica.isb=')
+   append(sru.isb,')')
+   copy_field(sru.isb,'sru.query.1')
+   join_field(sru.query,' AND ')
+   search_sru(sru.query,'http://sru.k10plus.de/bmsonline!rec=1',recordschema:picaxml,parser:picaxml,fixes:'./fix/830_check_map.fix')
+   # if SRU query finds matches, `sru.query` will be an array for records
+   if is_array(sru.query)
+      add_field(matched_records)
+      do list(path:sru.query,var:var)
+         copy_field(var.match,matched_records.$append)
+      end
+      join_field(matched_records,';')
+      count(sru.query)
+      cp(sru.query,matched_count)
+#      rm(sru)
+#      if greater_than(matched_count,1)
+         add_to_exporter(.,CSV,file:dubletten_isbn.csv,fields:'PPN,ISBN,matched_count,matched_records')
+#      end
+   end
+end
