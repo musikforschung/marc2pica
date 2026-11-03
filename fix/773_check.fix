@@ -1,12 +1,8 @@
-# catmandu convert PICA --type plain to Null --fix ./fix/773_check.fix < oenb_202501.pp
+#catmandu convert PICA --type plain to Null --fix ./fix/773_check.fix < oenb_202501.pp
 
-
-# SRU request:
-# logging
-log('SRU Request', level : WARN)
-
-if pica_match(002@$0/1,'a|b|c|d|f|F|v')
+if pica_match(002@$0/1,'[abcdfFv]')
    pica_map(006L$0,acnumber)
+   pica_map(002@$0,bbg)
    #issn
    if pica_match(005A$0,'\d.+')
       pica_map(005A$0,tmp.iss.$append)
@@ -51,8 +47,8 @@ if pica_match(002@$0/1,'a|b|c|d|f|F|v')
       rm(tmp)   
    end   
    #bbg
-   pica_map(002@$0/0-1,tmp.bbg)
-   append(tmp.bbg,"*")
+   pica_map(002@$0/0,tmp.bbg)
+   append(tmp.bbg,'* NOT pica.bbg=(As*|Os*|Ss*|Bs*|Es*|Vs*)')
    prepend(tmp.bbg,"pica.bbg=")
    copy_field(tmp.bbg,query.1)
    rm(tmp)
@@ -74,7 +70,7 @@ if pica_match(002@$0/1,'a|b|c|d|f|F|v')
       count(sru_query)
       cp(sru_query,matched_count)
       rm(sru_query)
-      add_to_exporter(.,CSV,file:./data/dubletten_773.csv,fields:'acnumber,matched_count,matched_records')
+      add_to_exporter(.,CSV,file:./data/dubletten_773.csv,fields:'acnumber,bbg,matched_count,matched_records')
    else
       add_to_exporter(.,PICA,type:plain,file:einspielung_3.pp)
    end

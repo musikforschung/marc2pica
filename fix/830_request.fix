@@ -1,5 +1,6 @@
 # catmandu convert MARC --type MARCMaker to Null --fix ./fix/830_request.fix < oenb_202501.mrk
-
+# https://wiki.obvsg.at/Katalogisierungshandbuch/Kategorienuebersicht830FE
+# wiederholbar, $w=ID (nw), $v=Zählung (nw)
 
 log('SRU Request', level : WARN)
 

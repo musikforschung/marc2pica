@@ -1,0 +1,9 @@
+#catmandu convert PICA --type plain to CSV --fix ./fix/830_list_II.fix --fields 830_AC < ./data/oenb_830_I.pp > ./dictionary/830_list_II.csv
+
+if pica_match(036F$7,'.*')
+   pica_map(036F$7,830_AC.$append)
+   replace_all(830_AC.*,'\(AT\-OBV\)',"")
+   join_field(830_AC,';')
+end
+
+select exists(830_AC)

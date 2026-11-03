@@ -1,0 +1,7 @@
+# catmandu convert PICA --type plain to Null --fix sep.fix
+
+if pica_match(002@$0,"[ABCEHOSVZ][abcdfF].*")
+   add_to_exporter(.,PICA,type:plain,file:einspielung_3.pp)
+#   reject()
+end
+

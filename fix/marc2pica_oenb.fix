@@ -1,4 +1,5 @@
 ## marc2pica_oenb
+#Konkordanz PICA - MARC21 https://d-nb.info/103016455X/34
 # catmandu convert MARC --type MARCMaker to PICA --type generic --subfield_indicator 'ƒ' --record_separator '####' --fix marc2pica_oenb.fix < oenb.mrk > oenb.pp
 
 
@@ -43,7 +44,7 @@ end
 if marc_match(008/21,'m')
    set_field(dc_type.1,"d")
 end
-set_field(dc_type.2,"u")
+set_field(dc_type.2,"x")
 join_field(dc_type,'')
 pica_add(dc_type,002@0,record:'pica')
 
@@ -953,7 +954,6 @@ do list(path:subjects_alternative,var:tmp)
    pica_add(tmp,144Za,force_new:1,record:'pica')
 end
 
-
 # 208@b
 set_field(selection_code,"z")
 pica_add(selection_code,208@b,record:'pica')
@@ -967,8 +967,8 @@ end
 replace_all(timestamp,'RILM','IMOENB: ')
 pica_add(timestamp,209Ba,force_new:1,record:'pica')
 
-set_field(timestamp,'99')
-pica_add(timestamp,209Bx,record:'pica')
+set_field(timestamp_II,'99')
+pica_add(timestamp_II,209Bx,record:'pica')
 
 
 remove_field(record)

@@ -1,0 +1,61 @@
+# catmandu convert MARC --type MARCMaker to Null --fix ./fix/as_check.fix < oenb_202501.mrk
+
+
+# SRU request:
+# logging
+log('SRU Request', level : WARN)
+
+if marc_match(LDR/7,'a')
+   marc_map(009,acnumber)
+   #bbg
+   set_field(query.0,"pica.bbg=(As*|Os*|Ss*|Bs*|Es*|Vs*)")
+   #title
+   marc_map(245$a,tmp.tit)
+   replace_all(tmp.tit,'^(Der|Die|Das|Des|Dem|Den|Ein|Eines|Einem|Eine|Einen|Einer)\s',"")
+   replace_all(tmp.tit,'^(The|A|Á|À|An|Le|La|Les|Des|Un|Une|La|Le|Lo|Gli|I|Il|Un|Una|Uno)\s',"")
+   replace_all(tmp.tit,'^(O|As|Os|Um|Uma|Umas|Uns|El|Los|Las|Unos|Unas)\s',"")
+   downcase(tmp.tit)
+   replace_all(tmp.tit,"\s:.*|\..*|\!.*|\?.*",'')
+   replace_all(tmp.tit,'|^\.{1,6}',"")
+   replace_all(tmp.tit,"\»|\«|\"|\>|\<|\(|\)|\:|\?|\!|\'\"|\@|\&|\/",'')
+   replace_all(tmp.tit,"\-",' ')
+   prepend(tmp.tit,'pica.tit="')
+   append(tmp.tit,'"')
+   copy_field(tmp.tit,'query.0')
+   rm(tmp)   
+   #jah
+#   marc_map(008/7-10,tmp.jah)
+#   prepend(tmp.jah,"pica.jah=")
+#   copy_field(tmp.jah,query.1)
+   #aut
+   marc_map(100$a,tmp.per)
+   prepend(tmp.per,'pica.per="')
+   append(tmp.per,'"')
+   copy_field(tmp.per,query.1)
+   #erstelle sru_query  
+   join_field(query,' AND ')
+   copy_field(query,sru_query.1)
+   append(sru_query.1.,")")
+   prepend(sru_query.1,"(")
+   rm(query)
+   join_field(sru_query," AND ")
+   #sru-abfrage
+   search_sru(sru_query,'http://sru.k10plus.de/bmsonline!rec=1',recordschema:picaxml,parser:picaxml,fixes:'./fix/830_check_map.fix')
+   if is_array(sru_query)
+      add_field(matched_records)
+      do list(path:sru_query,var:var)
+         copy_field(var.match,matched_records.$append)
+      end
+      join_field(matched_records,';')
+      count(sru_query)
+      cp(sru_query,matched_count)
+      rm(sru_query)
+      add_to_exporter(.,CSV,file:./data/dubletten_as.csv,fields:'acnumber,matched_count,matched_records')
+   else
+      add_to_exporter(.,PICA,type:plain,fix:./fix/marc2pica_oenb.fix,file:einspielung_4.pp)
+   end
+end
+
+
+retain(sru_query)
+   

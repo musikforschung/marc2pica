@@ -1,4 +1,4 @@
-# $ catmandu convert PICA --type plain to Null --fix ./fix/830_check.fix  < ./data/oenb_830.pp
+# $ catmandu convert PICA --type plain to Null --fix ./fix/830_check_I.fix  < ./data/oenb_830_I.pp
 
 # SRU request:
 # logging
@@ -72,9 +72,9 @@ if is_array(sru_query)
       count(sru_query)
       cp(sru_query,matched_count)
       rm(sru_query)
-      add_to_exporter(.,CSV,file:./data/dubletten.csv,fields:'acnumber,matched_count,matched_records')
+      add_to_exporter(.,CSV,file:./data/dubletten_I.csv,fields:'acnumber,matched_count,matched_records')
 else
-   add_to_exporter(.,PICA,type:plain,fix:./fix/sep.fix,file:einspielung_1.pp)
+   add_to_exporter(.,PICA,type:plain,file:einspielung_2.pp)
 end
 
 

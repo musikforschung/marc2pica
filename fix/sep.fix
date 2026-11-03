@@ -1,7 +1,8 @@
 # catmandu convert PICA --type plain to Null --fix sep.fix
 
-if pica_match(036F$7,'.*')
-   add_to_exporter(.,PICA,type:plain,file:einspielung_2.pp)
-   reject()
+if pica_match(002@$0,'[ABCEHOSVZ][abcdfF].*')
+   add_to_exporter(.,PICA,type:plain,file:einspielung_3.pp)
+else
+   add_to_exporter(.,PICA,type:plain,file:einspielung_4.pp)
 end
 

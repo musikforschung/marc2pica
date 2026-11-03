@@ -1,0 +1,11 @@
+#catmandu convert MARC --type MARCMaker to CSV --fix ./fix/830_list_I.fix --fields 830_AC < oenb_202502.mrk > ./dictionary/830_list_I.csv
+
+if marc_match(830$w,'\(AT-OBV\)AC\d{7,}')
+   marc_map(830$w,830_AC.$append)
+   replace_all(830_AC.*,'\(AT\-OBV\)',"")
+   join_field(830_AC,';')
+end
+
+
+select exists(830_AC)
+#retain(test)
